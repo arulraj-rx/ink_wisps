@@ -19,7 +19,7 @@ class DropboxToInstagramUploader:
     def __init__(self):
         self.script_name = "ink_wisps_post.py"
         self.ist = timezone('Asia/Kolkata')
-        self.account_key = "INK_WISPS"
+        self.account_key = "ink_wisps"
         self.schedule_file = "scheduler/config.json"
 
         # Logging
