@@ -1,1 +1,32 @@
-"{}" 
+{
+  "ink_wisps": {
+    "Monday": {
+      "times": ["08:30", "12:30", "15:30", "19:00"],
+      "caption": "#ink_wisps"
+    },
+    "Tuesday": {
+      "times": ["09:00", "13:00", "16:00", "18:30"],
+      "caption": "#ink_wisps"
+    },
+    "Wednesday": {
+      "times": ["08:00", "12:00", "15:00", "19:00"],
+      "caption": "#ink_wisps"
+    },
+    "Thursday": {
+      "times": ["09:00", "13:30", "16:30", "20:00"],
+      "caption": "#ink_wisps"
+    },
+    "Friday": {
+      "times": ["08:30", "12:30", "15:30", "20:00"],
+      "caption": "#ink_wisps"
+    },
+    "Saturday": {
+      "times": ["10:00", "13:00", "17:00", "19:30"],
+      "caption": "#ink_wisps"
+    },
+    "Sunday": {
+      "times": ["09:00", "11:30", "18:00", "21:00"],
+      "caption": "#ink_wisps"
+    }
+  }
+}
