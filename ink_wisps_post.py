@@ -130,10 +130,7 @@ class DropboxToInstagramUploader:
             self.send_message(f"❌ Failed: {name}\n🧾 Error: {err}\n🪪 Code: {code}", level=logging.ERROR)
             return False
 
-        creation_id = res.json().get("id")
-        if not creation_id:
-            # gracefully log and exit
-
+        creation_id = res.json()["id"]
 
         if media_type == "REELS":
             for _ in range(self.INSTAGRAM_REEL_STATUS_RETRIES):
