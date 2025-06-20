@@ -1,4 +1,4 @@
-# File: INK_WISPS_post.py
+# File: INKWISPS_post.py
 import os
 import time
 import json
@@ -16,9 +16,9 @@ class DropboxToInstagramUploader:
     INSTAGRAM_REEL_STATUS_WAIT_TIME = 5
 
     def __init__(self):
-        self.script_name = "ink_wisps_post.py"
+        self.script_name = "inkwisps_post.py"
         self.ist = timezone('Asia/Kolkata')
-        self.account_key = "ink_wisps"
+        self.account_key = "inkwisps"
         self.schedule_file = "scheduler/config.json"
 
         # Logging
@@ -30,15 +30,15 @@ class DropboxToInstagramUploader:
         self.logger = logging.getLogger()
 
         # Secrets from GitHub environment
-        self.instagram_access_token = os.getenv("IG_INK_WISPS_TOKEN")
-        self.instagram_account_id = os.getenv("IG_INK_WISPS_ID")
-        self.dropbox_app_key = os.getenv("DROPBOX_INK_WISPS_APP_KEY")
-        self.dropbox_app_secret = os.getenv("DROPBOX_INK_WISPS_APP_SECRET")
-        self.dropbox_refresh_token = os.getenv("DROPBOX_INK_WISPS_REFRESH")
+        self.instagram_access_token = os.getenv("IG_INKWISPS_TOKEN")
+        self.instagram_account_id = os.getenv("IG_INKWISPS_ID")
+        self.dropbox_app_key = os.getenv("DROPBOX_INKWISPS_APP_KEY")
+        self.dropbox_app_secret = os.getenv("DROPBOX_INKWISPS_APP_SECRET")
+        self.dropbox_refresh_token = os.getenv("DROPBOX_INKWISPS_REFRESH")
         self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
-        self.dropbox_folder = "/ink_wisps"
+        self.dropbox_folder = "/inkwisps"
         self.telegram_bot = Bot(token=self.telegram_bot_token)
 
         self.start_time = time.time()
