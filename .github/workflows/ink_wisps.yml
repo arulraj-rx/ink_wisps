@@ -3,8 +3,8 @@ name: 📤 Instagram & Facebook ink_wisps
 on:
   workflow_dispatch:  # Manual run button
   schedule:
-  - cron: '0 2 * * *'    # 07:30 AM IST
-  - cron: '15 6 * * *'   # 11:45 AM IST 
+    - cron: '0 2 * * *'    # 07:30 AM IST
+    - cron: '15 6 * * *'   # 11:45 AM IST 
 
 jobs:
   autopost:
@@ -44,4 +44,5 @@ jobs:
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
       run: python ink_wisps_post.py
+
 
