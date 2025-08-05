@@ -237,14 +237,12 @@ class DropboxToInstagramUploader:
         media_type = "REELS" if ext.endswith((".mp4", ".mov")) else "IMAGE"
 
         self.send_message(f"🚀 Starting upload process for: {name}", level=logging.INFO)
-        
         temp_link = dbx.files_get_temporary_link(file.path_lower).link
         file_size = f"{file.size / 1024 / 1024:.2f}MB"
         total_files = len(self.list_dropbox_files(dbx))
-
         self.log_console_only(f"📸 Instagram upload details:\n📂 Type: {media_type}\n📐 Size: {file_size}\n📦 Remaining: {total_files}")
 
-        # Get Facebook page access token for both Instagram and Facebook
+        # Get Facebook page access token for Instagram
         self.log_console_only("🔐 Step 1: Retrieving Facebook Page Access Token...", level=logging.INFO)
         page_token = self.get_page_access_token()
         if not page_token:
@@ -274,20 +272,26 @@ class DropboxToInstagramUploader:
         }
 
         if media_type == "REELS":
-            data.update({"media_type": "REELS", "video_url": temp_link, "share_to_feed": "false"})
+            # Enable share to Facebook for Reels
+            data.update({
+                "media_type": "REELS",
+                "video_url": temp_link,
+                "share_to_feed": "false",
+                "share_to_facebook": "true"
+            })
         else:
             data["image_url"] = temp_link
 
         self.log_console_only("🔄 Step 2: Sending media creation request to Instagram API...", level=logging.INFO)
         self.log_console_only(f"📡 API URL: {upload_url}", level=logging.INFO)
-        
+
         start_time = time.time()
         res = self.session.post(upload_url, data=data)
         request_time = time.time() - start_time
-        
+
         self.log_console_only(f"⏱️ API request completed in {request_time:.2f} seconds", level=logging.INFO)
         self.log_console_only(f"📊 Response status: {res.status_code}", level=logging.INFO)
-        
+
         if res.status_code != 200:
             err = res.json().get("error", {}).get("message", "Unknown")
             code = res.json().get("error", {}).get("code", "N/A")
@@ -306,89 +310,55 @@ class DropboxToInstagramUploader:
             processing_start = time.time()
             for attempt in range(self.INSTAGRAM_REEL_STATUS_RETRIES):
                 self.log_console_only(f"🔄 Processing attempt {attempt + 1}/{self.INSTAGRAM_REEL_STATUS_RETRIES}", level=logging.INFO)
-                
                 status_response = self.session.get(
                     f"{self.INSTAGRAM_API_BASE}/{creation_id}?fields=status_code&access_token={page_token}"
                 )
-                
                 if status_response.status_code != 200:
                     self.send_message(f"❌ Status check failed: {status_response.status_code}", level=logging.ERROR)
                     return False
-                
                 status = status_response.json()
                 current_status = status.get("status_code", "UNKNOWN")
-                
                 self.log_console_only(f"📊 Current status: {current_status}", level=logging.INFO)
-                
                 if current_status == "FINISHED":
                     processing_time = time.time() - processing_start
                     self.log_console_only(f"✅ Instagram video processing completed in {processing_time:.2f} seconds!", level=logging.INFO)
-                    
-                    # Wait 8 seconds after FINISHED status before publishing (reduced from 15)
                     self.log_console_only("⏳ Waiting 15 seconds before publishing...", level=logging.INFO)
                     time.sleep(15)
                     break
                 elif current_status == "ERROR":
                     self.send_message(f"❌ Instagram processing failed: {name}\n📸 Status: ERROR", level=logging.ERROR)
                     return False
-                
                 self.log_console_only(f"⏳ Waiting {self.INSTAGRAM_REEL_STATUS_WAIT_TIME} seconds before next check...", level=logging.INFO)
                 time.sleep(self.INSTAGRAM_REEL_STATUS_WAIT_TIME)
 
         self.log_console_only("📤 Step 4: Publishing to Instagram...", level=logging.INFO)
         publish_url = f"{self.INSTAGRAM_API_BASE}/{self.ig_id}/media_publish"
         publish_data = {"creation_id": creation_id, "access_token": page_token}
-        
         self.log_console_only(f"📡 Publishing to: {publish_url}", level=logging.INFO)
-        
         publish_start = time.time()
         pub = self.session.post(publish_url, data=publish_data)
         publish_time = time.time() - publish_start
-        
         self.log_console_only(f"⏱️ Publish request completed in {publish_time:.2f} seconds", level=logging.INFO)
         self.log_console_only(f"📊 Publish response status: {pub.status_code}", level=logging.INFO)
-        
-        # Track Instagram and Facebook results separately
+
         instagram_success = False
-        facebook_success = False
-        
         if pub.status_code == 200:
             response_data = pub.json()
             instagram_id = response_data.get("id", "Unknown")
-            
             if not instagram_id:
                 self.send_message("⚠️ Instagram publish succeeded but no media ID returned", level=logging.WARNING)
                 instagram_success = False
             else:
                 self.send_message(f"✅ Instagram post published successfully!\n📸 Media ID: {instagram_id}\n📸 Account ID: {self.ig_id}\n📦 Files left: {total_files - 1}")
                 instagram_success = True
-                
-                # Verify the post is live using the published media_id (not creation_id)
                 self.verify_instagram_post_by_media_id(instagram_id, page_token)
-            
-            # Also post to Facebook Page for both REELS and IMAGE
-            if media_type == "REELS":
-                self.log_console_only("📘 Step 5: Starting Facebook Page upload...", level=logging.INFO)
-                facebook_success = self.post_to_facebook_page(dbx, file, caption, page_token)
-            elif media_type == "IMAGE":
-                self.log_console_only("📘 Step 5: Starting Facebook Page upload for image...", level=logging.INFO)
-                facebook_success = self.post_to_facebook_page(dbx, file, caption, page_token)
-                # Telegram log for Facebook image upload
-                if facebook_success:
-                    self.send_message(f"✅ Facebook Page photo published successfully for file: {file.name}", level=logging.INFO)
-                else:
-                    self.send_message(f"❌ Facebook Page photo upload failed for file: {file.name}", level=logging.ERROR)
-            else:
-                facebook_success = True  # No Facebook post needed for other types
-            
-            # Return success status for both platforms
-            return True, media_type, instagram_success, facebook_success
+            # No explicit Facebook upload, rely on share_to_facebook
+            return True, media_type, instagram_success, None
         else:
             error_msg = pub.json().get("error", {}).get("message", "Unknown error")
             error_code = pub.json().get("error", {}).get("code", "N/A")
             self.send_message(f"❌ Instagram publish failed: {name}\n📸 Error: {error_msg}\n📸 Code: {error_code}\n📸 Status: {pub.status_code}", level=logging.ERROR)
-            # Do not attempt verification with creation_id, as it is invalid after publish
-            return False, media_type, instagram_success, facebook_success
+            return False, media_type, instagram_success, None
 
     def is_supported_aspect_ratio(self, video_path):
         clip = VideoFileClip(video_path)
