@@ -12,6 +12,30 @@ from moviepy.editor import VideoFileClip
 import random
 
 class DropboxToInstagramUploader:
+    def get_instagram_account_type(self, page_token):
+        """Detect Instagram account type (Business/Creator) and log details."""
+        try:
+            url = f"{self.INSTAGRAM_API_BASE}/{self.ig_id}"
+            params = {
+                "fields": "id,username,account_type,name,profile_picture_url,biography,website,followers_count,follows_count,media_count",
+                "access_token": page_token
+            }
+            res = self.session.get(url, params=params)
+            if res.status_code == 200:
+                data = res.json()
+                account_type = data.get("account_type", "UNKNOWN")
+                username = data.get("username", "UNKNOWN")
+                self.log_console_only(f"🔎 Instagram account type: {account_type}", level=logging.INFO)
+                self.log_console_only(f"👤 Instagram username: {username}", level=logging.INFO)
+                if account_type not in ["BUSINESS", "CREATOR"]:
+                    self.send_message(f"⚠️ Instagram account type is {account_type}. Only BUSINESS and CREATOR are supported for publishing.", level=logging.WARNING)
+                return account_type
+            else:
+                self.send_message(f"❌ Failed to fetch Instagram account type: {res.text}", level=logging.ERROR)
+                return None
+        except Exception as e:
+            self.send_message(f"❌ Exception fetching Instagram account type: {e}", level=logging.ERROR)
+            return None
     DROPBOX_TOKEN_URL = "https://api.dropbox.com/oauth2/token"
     INSTAGRAM_API_BASE = "https://graph.facebook.com/v18.0"
     INSTAGRAM_REEL_STATUS_RETRIES = 10
@@ -259,6 +283,14 @@ class DropboxToInstagramUploader:
         # Check if Instagram is properly connected to the Facebook page
         if not self.check_instagram_page_connection(page_token):
             self.send_message("❌ Instagram account not properly connected to Facebook page. Aborting upload.", level=logging.ERROR)
+            return False
+
+        # Detect Instagram account type and log
+        account_type = self.get_instagram_account_type(page_token)
+        if account_type is None:
+            self.send_message("⚠️ Could not determine Instagram account type. Proceeding, but API may fail.", level=logging.WARNING)
+        elif account_type not in ["BUSINESS", "CREATOR"]:
+            self.send_message(f"❌ Unsupported Instagram account type: {account_type}. Only BUSINESS and CREATOR are supported.", level=logging.ERROR)
             return False
 
         # Build captions with file name as first line
