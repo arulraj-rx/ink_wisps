@@ -383,9 +383,9 @@ class DropboxToInstagramUploader:
             else:
                 self.send_message(f"✅ Instagram post published successfully!\n📸 Media ID: {instagram_id}\n📸 Account ID: {self.ig_id}\n📦 Files left: {total_files - 1}")
                 instagram_success = True
-                self.verify_instagram_post_by_media_id(instagram_id, page_token)
             # No explicit Facebook upload, rely on share_to_facebook
-            return True, media_type, instagram_success, None
+            # Return first, then verify in process_files_with_retries
+            return True, media_type, instagram_success, instagram_id
         else:
             error_msg = pub.json().get("error", {}).get("message", "Unknown error")
             error_code = pub.json().get("error", {}).get("code", "N/A")
@@ -650,27 +650,32 @@ class DropboxToInstagramUploader:
             result = self.post_to_instagram(dbx, file, caption, description)
             if isinstance(result, tuple):
                 if len(result) == 4:
-                    success, media_type, instagram_success, facebook_success = result
+                    success, media_type, instagram_success, instagram_id = result
+                    facebook_success = False
                 elif len(result) == 2:
                     success, media_type = result
                     instagram_success = success
                     facebook_success = False
+                    instagram_id = None
                 else:
                     success = result
                     media_type = None
                     instagram_success = success
                     facebook_success = False
+                    instagram_id = None
             else:
                 success = result
                 media_type = None
                 instagram_success = success
                 facebook_success = False
+                instagram_id = None
         except Exception as e:
             self.send_message(f"❌ Exception during post for {file.name}: {e}", level=logging.ERROR)
             success = False
             media_type = None
             instagram_success = False
             facebook_success = False
+            instagram_id = None
 
         # Always delete the file after an attempt
         try:
@@ -692,13 +697,17 @@ class DropboxToInstagramUploader:
                 self.send_message("✅ Successfully posted to Instagram", level=logging.INFO)
         else:
             self.send_message("❌ Instagram post failed", level=logging.ERROR)
-            
+
+        # After reporting success, verify the post is live (if we have an ID)
+        if instagram_success and instagram_id:
+            self.verify_instagram_post_by_media_id(instagram_id, self.get_page_access_token())
+
         if media_type == "REELS":
             if facebook_success:
                 self.send_message("✅ Successfully posted one reel to Facebook Page", level=logging.INFO)
             else:
                 self.send_message("❌ Facebook Page post failed", level=logging.ERROR)
-        
+
         # Final summary with remaining files count
         if media_type == "REELS":
             self.log_console_only(f"📊 Final Status: Instagram {'✅' if instagram_success else '❌'} | Facebook {'✅' if facebook_success else '❌'} | 📦 Remaining files: {remaining_files}", level=logging.INFO)
@@ -706,7 +715,7 @@ class DropboxToInstagramUploader:
             self.log_console_only(f"📊 Final Status: Instagram {'✅' if instagram_success else '❌'} | Facebook {'✅' if facebook_success else '❌'} (image) | 📦 Remaining files: {remaining_files}", level=logging.INFO)
         else:
             self.log_console_only(f"📊 Final Status: Instagram {'✅' if instagram_success else '❌'} | Facebook N/A | 📦 Remaining files: {remaining_files}", level=logging.INFO)
-        
+
         # Return overall success (Instagram success is primary)
         return instagram_success
 
